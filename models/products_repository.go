@@ -1,6 +1,10 @@
 package models
 
-import "github.com/shopspring/decimal"
+import (
+	"context"
+
+	"github.com/shopspring/decimal"
+)
 
 type GetAllProductsRequest struct {
 	Offset   int
@@ -10,6 +14,6 @@ type GetAllProductsRequest struct {
 }
 
 type ProductsRepository interface {
-	GetAllProducts(req GetAllProductsRequest) (products []Product, total int64, err error)
-	GetProductByCode(code string) (*Product, error)
+	GetAllProducts(ctx context.Context, req GetAllProductsRequest) (products []Product, total int64, err error)
+	GetProductByCode(ctx context.Context, code string) (*Product, error)
 }

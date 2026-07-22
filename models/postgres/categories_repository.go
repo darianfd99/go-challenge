@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"errors"
 
 	"github.com/mytheresa/go-hiring-challenge/models"
@@ -17,18 +18,18 @@ func NewCategoriesRepository(db *gorm.DB) *CategoriesRepository {
 	}
 }
 
-func (r *CategoriesRepository) GetAllCategories() ([]models.Category, error) {
+func (r *CategoriesRepository) GetAllCategories(ctx context.Context) ([]models.Category, error) {
 	var categories []models.Category
 
-	if err := r.db.Order("id").Find(&categories).Error; err != nil {
+	if err := r.db.WithContext(ctx).Order("id").Find(&categories).Error; err != nil {
 		return nil, err
 	}
 
 	return categories, nil
 }
 
-func (r *CategoriesRepository) CreateCategory(category models.Category) (*models.Category, error) {
-	if err := r.db.Create(&category).Error; err != nil {
+func (r *CategoriesRepository) CreateCategory(ctx context.Context, category models.Category) (*models.Category, error) {
+	if err := r.db.WithContext(ctx).Create(&category).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, models.ErrCategoryCodeExists
 		}

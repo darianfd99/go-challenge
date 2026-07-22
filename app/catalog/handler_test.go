@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -21,12 +22,12 @@ type fakeProductsRepository struct {
 	gotReq   models.GetAllProductsRequest
 }
 
-func (f *fakeProductsRepository) GetAllProducts(req models.GetAllProductsRequest) ([]models.Product, int64, error) {
+func (f *fakeProductsRepository) GetAllProducts(_ context.Context, req models.GetAllProductsRequest) ([]models.Product, int64, error) {
 	f.gotReq = req
 	return f.products, f.total, f.listErr
 }
 
-func (f *fakeProductsRepository) GetProductByCode(code string) (*models.Product, error) {
+func (f *fakeProductsRepository) GetProductByCode(_ context.Context, code string) (*models.Product, error) {
 	return f.product, f.err
 }
 

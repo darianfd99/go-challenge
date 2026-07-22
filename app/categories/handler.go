@@ -33,7 +33,7 @@ func NewCategoriesHandler(r models.CategoriesRepository) *CategoriesHandler {
 }
 
 func (h *CategoriesHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
-	cats, err := h.repo.GetAllCategories()
+	cats, err := h.repo.GetAllCategories(r.Context())
 	if err != nil {
 		api.InternalError(w, "categories", err)
 		return
@@ -58,7 +58,7 @@ func (h *CategoriesHandler) HandleCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	created, err := h.repo.CreateCategory(models.Category{Code: req.Code, Name: req.Name})
+	created, err := h.repo.CreateCategory(r.Context(), models.Category{Code: req.Code, Name: req.Name})
 	if errors.Is(err, models.ErrCategoryCodeExists) {
 		api.ErrorResponse(w, http.StatusConflict, err.Error())
 		return

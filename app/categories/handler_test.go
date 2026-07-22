@@ -2,6 +2,7 @@ package categories
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -19,11 +20,11 @@ type fakeCategoriesRepository struct {
 	createErr error
 }
 
-func (f *fakeCategoriesRepository) GetAllCategories() ([]models.Category, error) {
+func (f *fakeCategoriesRepository) GetAllCategories(_ context.Context) ([]models.Category, error) {
 	return f.categories, f.err
 }
 
-func (f *fakeCategoriesRepository) CreateCategory(category models.Category) (*models.Category, error) {
+func (f *fakeCategoriesRepository) CreateCategory(_ context.Context, category models.Category) (*models.Category, error) {
 	if f.createErr != nil {
 		return nil, f.createErr
 	}

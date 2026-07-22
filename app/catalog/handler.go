@@ -62,7 +62,7 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, total, err := h.repo.GetAllProducts(req)
+	res, total, err := h.repo.GetAllProducts(r.Context(), req)
 	if err != nil {
 		api.InternalError(w, "catalog", err)
 		return
@@ -87,7 +87,7 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 
-	p, err := h.repo.GetProductByCode(code)
+	p, err := h.repo.GetProductByCode(r.Context(), code)
 	if errors.Is(err, models.ErrProductNotFound) {
 		api.ErrorResponse(w, http.StatusNotFound, err.Error())
 		return

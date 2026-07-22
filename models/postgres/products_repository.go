@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
@@ -40,7 +41,7 @@ func priceLessThan(max *decimal.Decimal) func(db *gorm.DB) *gorm.DB {
 	}
 }
 
-func (r *ProductsRepository) GetAllProducts(req models.GetAllProductsRequest) ([]models.Product, int64, error) {
+func (r *ProductsRepository) GetAllProducts(ctx context.Context, req models.GetAllProductsRequest) ([]models.Product, int64, error) {
 	var (
 		total    int64
 		products []models.Product
@@ -48,7 +49,7 @@ func (r *ProductsRepository) GetAllProducts(req models.GetAllProductsRequest) ([
 
 	// REPEATABLE READ pins Count and Find to the same snapshot, so total can't
 	// drift out of sync with the page if rows are inserted/deleted concurrently.
-	err := r.db.Transaction(func(tx *gorm.DB) error {
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		query := tx.Model(&models.Product{}).
 			Joins("Category").
 			Scopes(byCategory(req.Category), priceLessThan(req.MaxPrice))
@@ -67,10 +68,10 @@ func (r *ProductsRepository) GetAllProducts(req models.GetAllProductsRequest) ([
 	return products, total, nil
 }
 
-func (r *ProductsRepository) GetProductByCode(code string) (*models.Product, error) {
+func (r *ProductsRepository) GetProductByCode(ctx context.Context, code string) (*models.Product, error) {
 	var product models.Product
 
-	err := r.db.Joins("Category").
+	err := r.db.WithContext(ctx).Joins("Category").
 		Preload("Variants").
 		Where("products.code = ?", code).
 		First(&product).Error
