@@ -13,16 +13,22 @@ const contentTypeJSON = "application/json"
 // details (e.g. raw DB error text) that shouldn't be exposed externally.
 var ErrInternalServerError = errors.New("internal server error")
 
-func OKResponse(w http.ResponseWriter, data any) {
+func jsonResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", contentTypeJSON)
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
 }
 
+func OKResponse(w http.ResponseWriter, data any) {
+	jsonResponse(w, http.StatusOK, data)
+}
+
+func CreatedResponse(w http.ResponseWriter, data any) {
+	jsonResponse(w, http.StatusCreated, data)
+}
+
 func ErrorResponse(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", contentTypeJSON)
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(struct {
+	jsonResponse(w, status, struct {
 		Error string `json:"error"`
 	}{Error: message})
 }

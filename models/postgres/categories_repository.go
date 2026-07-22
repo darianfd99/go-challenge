@@ -1,6 +1,8 @@
 package postgres
 
 import (
+	"errors"
+
 	"github.com/mytheresa/go-hiring-challenge/models"
 	"gorm.io/gorm"
 )
@@ -23,4 +25,15 @@ func (r *CategoriesRepository) GetAllCategories() ([]models.Category, error) {
 	}
 
 	return categories, nil
+}
+
+func (r *CategoriesRepository) CreateCategory(category models.Category) (*models.Category, error) {
+	if err := r.db.Create(&category).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return nil, models.ErrCategoryCodeExists
+		}
+		return nil, err
+	}
+
+	return &category, nil
 }
