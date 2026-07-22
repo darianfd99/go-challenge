@@ -1,8 +1,12 @@
 package models
 
+import "github.com/shopspring/decimal"
+
 type GetAllProductsRequest struct {
-	Offset int
-	Limit  int
+	Offset   int
+	Limit    int
+	Category string
+	MaxPrice *decimal.Decimal
 }
 
 type ProductsRepository interface {

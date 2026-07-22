@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/mytheresa/go-hiring-challenge/models"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -17,6 +18,27 @@ func NewProductsRepository(db *gorm.DB) *ProductsRepository {
 	}
 }
 
+func byCategory(code string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if code == "" {
+			return db
+		}
+		// Joins("Category") aliases the joined table as the quoted, case-preserved
+		// "Category"; an unquoted reference here would fold to lowercase in
+		// Postgres and no longer match the alias.
+		return db.Where(`"Category".code = ?`, code)
+	}
+}
+
+func priceLessThan(max *decimal.Decimal) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if max == nil {
+			return db
+		}
+		return db.Where("price < ?", max)
+	}
+}
+
 func (r *ProductsRepository) GetAllProducts(req models.GetAllProductsRequest) ([]models.Product, int64, error) {
 	var (
 		total    int64
@@ -26,10 +48,14 @@ func (r *ProductsRepository) GetAllProducts(req models.GetAllProductsRequest) ([
 	// REPEATABLE READ pins Count and Find to the same snapshot, so total can't
 	// drift out of sync with the page if rows are inserted/deleted concurrently.
 	err := r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.Product{}).Count(&total).Error; err != nil {
+		query := tx.Model(&models.Product{}).
+			Joins("Category").
+			Scopes(byCategory(req.Category), priceLessThan(req.MaxPrice))
+
+		if err := query.Count(&total).Error; err != nil {
 			return err
 		}
-		return tx.Preload("Variants").Preload("Category").
+		return query.Order("products.id").
 			Offset(req.Offset).Limit(req.Limit).
 			Find(&products).Error
 	}, &sql.TxOptions{Isolation: sql.LevelRepeatableRead})

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/mytheresa/go-hiring-challenge/models"
+	"github.com/shopspring/decimal"
 )
 
 type Response struct {
@@ -80,7 +81,34 @@ func parseGetAllProductsRequest(r *http.Request) (models.GetAllProductsRequest, 
 		return models.GetAllProductsRequest{}, err
 	}
 
-	return models.GetAllProductsRequest{Offset: offset, Limit: limit}, nil
+	category, maxPrice, err := parseFilters(r)
+	if err != nil {
+		return models.GetAllProductsRequest{}, err
+	}
+
+	return models.GetAllProductsRequest{
+		Offset:   offset,
+		Limit:    limit,
+		Category: category,
+		MaxPrice: maxPrice,
+	}, nil
+}
+
+func parseFilters(r *http.Request) (category string, maxPrice *decimal.Decimal, err error) {
+	category = r.URL.Query().Get("category")
+
+	if v := r.URL.Query().Get("price_lt"); v != "" {
+		p, err := decimal.NewFromString(v)
+		if err != nil {
+			return "", nil, ErrInvalidPrice
+		}
+		if p.IsNegative() {
+			return "", nil, ErrInvalidPrice
+		}
+		maxPrice = &p
+	}
+
+	return category, maxPrice, nil
 }
 
 func parsePagination(r *http.Request) (offset int, limit int, err error) {
@@ -104,12 +132,7 @@ func parsePagination(r *http.Request) (offset int, limit int, err error) {
 		}
 		limit = n
 	}
-	if limit < 1 {
-		limit = 1
-	}
-	if limit > 100 {
-		limit = 100
-	}
+	limit = min(max(limit, 1), 100)
 
 	return offset, limit, nil
 }
