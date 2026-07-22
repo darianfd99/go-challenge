@@ -1,23 +1,19 @@
 package models
 
 import (
-	"gorm.io/gorm"
+	"context"
+
+	"github.com/shopspring/decimal"
 )
 
-type ProductsRepository struct {
-	db *gorm.DB
+type GetAllProductsRequest struct {
+	Offset   int
+	Limit    int
+	Category string
+	MaxPrice *decimal.Decimal
 }
 
-func NewProductsRepository(db *gorm.DB) *ProductsRepository {
-	return &ProductsRepository{
-		db: db,
-	}
-}
-
-func (r *ProductsRepository) GetAllProducts() ([]Product, error) {
-	var products []Product
-	if err := r.db.Preload("Variants").Find(&products).Error; err != nil {
-		return nil, err
-	}
-	return products, nil
+type ProductsRepository interface {
+	GetAllProducts(ctx context.Context, req GetAllProductsRequest) (products []Product, total int64, err error)
+	GetProductByCode(ctx context.Context, code string) (*Product, error)
 }
