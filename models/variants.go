@@ -9,7 +9,7 @@ import (
 // Variants can be used to represent different configurations or options for a product.
 type Variant struct {
 	ID        uint             `gorm:"primaryKey"`
-	ProductID uint             `gorm:"not null"`
+	ProductID uint             `gorm:"not null;index"`
 	Name      string           `gorm:"not null"`
 	SKU       string           `gorm:"uniqueIndex;not null"`
 	Price     *decimal.Decimal `gorm:"type:decimal(10,2);null"`

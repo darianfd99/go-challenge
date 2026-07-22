@@ -9,8 +9,8 @@ import (
 type Product struct {
 	ID         uint            `gorm:"primaryKey"`
 	Code       string          `gorm:"uniqueIndex;not null"`
-	Price      decimal.Decimal `gorm:"type:decimal(10,2);not null"`
-	CategoryID uint            `gorm:"not null"`
+	Price      decimal.Decimal `gorm:"type:decimal(10,2);not null;index"`
+	CategoryID uint            `gorm:"not null;index"`
 	Category   Category        `gorm:"foreignKey:CategoryID"`
 	Variants   []Variant       `gorm:"foreignKey:ProductID"`
 }
