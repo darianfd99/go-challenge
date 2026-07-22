@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"errors"
 
 	"github.com/mytheresa/go-hiring-challenge/models"
 	"github.com/shopspring/decimal"
@@ -64,4 +65,21 @@ func (r *ProductsRepository) GetAllProducts(req models.GetAllProductsRequest) ([
 	}
 
 	return products, total, nil
+}
+
+func (r *ProductsRepository) GetProductByCode(code string) (*models.Product, error) {
+	var product models.Product
+
+	err := r.db.Joins("Category").
+		Preload("Variants").
+		Where("products.code = ?", code).
+		First(&product).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, models.ErrProductNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &product, nil
 }

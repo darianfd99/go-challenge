@@ -2,6 +2,8 @@ package catalog
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -25,6 +27,19 @@ type Category struct {
 	Name string `json:"name"`
 }
 
+type ProductDetails struct {
+	Code     string          `json:"code"`
+	Price    float64         `json:"price"`
+	Category Category        `json:"category"`
+	Variants []VariantDetail `json:"variants"`
+}
+
+type VariantDetail struct {
+	SKU   string  `json:"sku"`
+	Name  string  `json:"name"`
+	Price float64 `json:"price"`
+}
+
 type CatalogHandler struct {
 	repo models.ProductsRepository
 }
@@ -33,6 +48,14 @@ func NewCatalogHandler(r models.ProductsRepository) *CatalogHandler {
 	return &CatalogHandler{
 		repo: r,
 	}
+}
+
+// internalError logs the real error server-side and writes a generic 500 to
+// the client, since the real error (e.g. raw DB error text) may leak details
+// that shouldn't be exposed externally.
+func internalError(w http.ResponseWriter, err error) {
+	log.Printf("catalog: %s", err)
+	http.Error(w, errInternal.Error(), http.StatusInternalServerError)
 }
 
 func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +67,7 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	res, total, err := h.repo.GetAllProducts(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internalError(w, err)
 		return
 	}
 
@@ -70,7 +93,51 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internalError(w, err)
+		return
+	}
+}
+
+func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request) {
+	code := r.PathValue("code")
+
+	p, err := h.repo.GetProductByCode(code)
+	if errors.Is(err, models.ErrProductNotFound) {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		internalError(w, err)
+		return
+	}
+
+	variants := make([]VariantDetail, len(p.Variants))
+	for i, v := range p.Variants {
+		price := p.Price
+		if v.Price != nil {
+			price = *v.Price
+		}
+		variants[i] = VariantDetail{
+			SKU:   v.SKU,
+			Name:  v.Name,
+			Price: price.InexactFloat64(),
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	response := ProductDetails{
+		Code:  p.Code,
+		Price: p.Price.InexactFloat64(),
+		Category: Category{
+			Code: p.Category.Code,
+			Name: p.Category.Name,
+		},
+		Variants: variants,
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		internalError(w, err)
 		return
 	}
 }

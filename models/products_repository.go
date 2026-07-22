@@ -11,4 +11,5 @@ type GetAllProductsRequest struct {
 
 type ProductsRepository interface {
 	GetAllProducts(req GetAllProductsRequest) (products []Product, total int64, err error)
+	GetProductByCode(code string) (*Product, error)
 }
