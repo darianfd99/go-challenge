@@ -1,14 +1,21 @@
 package catalog
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/mytheresa/go-hiring-challenge/app/api"
 	"github.com/mytheresa/go-hiring-challenge/models"
 	"github.com/shopspring/decimal"
+)
+
+const (
+	defaultOffset = 0
+	defaultLimit  = 10
+	minLimit      = 1
+	maxLimit      = 100
 )
 
 type Response struct {
@@ -55,13 +62,13 @@ func NewCatalogHandler(r models.ProductsRepository) *CatalogHandler {
 // that shouldn't be exposed externally.
 func internalError(w http.ResponseWriter, err error) {
 	log.Printf("catalog: %s", err)
-	http.Error(w, errInternal.Error(), http.StatusInternalServerError)
+	api.ErrorResponse(w, http.StatusInternalServerError, api.ErrInternalServerError.Error())
 }
 
 func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	req, err := parseGetAllProductsRequest(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		api.ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -84,18 +91,10 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Return the products as a JSON response
-	w.Header().Set("Content-Type", "application/json")
-
-	response := Response{
+	api.OKResponse(w, Response{
 		Products: products,
 		Total:    total,
-	}
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		internalError(w, err)
-		return
-	}
+	})
 }
 
 func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +102,7 @@ func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request)
 
 	p, err := h.repo.GetProductByCode(code)
 	if errors.Is(err, models.ErrProductNotFound) {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		api.ErrorResponse(w, http.StatusNotFound, err.Error())
 		return
 	}
 	if err != nil {
@@ -124,9 +123,7 @@ func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
-	response := ProductDetails{
+	api.OKResponse(w, ProductDetails{
 		Code:  p.Code,
 		Price: p.Price.InexactFloat64(),
 		Category: Category{
@@ -134,12 +131,7 @@ func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request)
 			Name: p.Category.Name,
 		},
 		Variants: variants,
-	}
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		internalError(w, err)
-		return
-	}
+	})
 }
 
 func parseGetAllProductsRequest(r *http.Request) (models.GetAllProductsRequest, error) {
@@ -179,7 +171,7 @@ func parseFilters(r *http.Request) (category string, maxPrice *decimal.Decimal, 
 }
 
 func parsePagination(r *http.Request) (offset int, limit int, err error) {
-	offset = 0
+	offset = defaultOffset
 	if v := r.URL.Query().Get("offset"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil {
@@ -188,10 +180,10 @@ func parsePagination(r *http.Request) (offset int, limit int, err error) {
 		offset = n
 	}
 	if offset < 0 {
-		offset = 0
+		offset = defaultOffset
 	}
 
-	limit = 10
+	limit = defaultLimit
 	if v := r.URL.Query().Get("limit"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil {
@@ -199,7 +191,7 @@ func parsePagination(r *http.Request) (offset int, limit int, err error) {
 		}
 		limit = n
 	}
-	limit = min(max(limit, 1), 100)
+	limit = min(max(limit, minLimit), maxLimit)
 
 	return offset, limit, nil
 }

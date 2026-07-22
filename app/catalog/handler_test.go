@@ -77,6 +77,7 @@ func TestHandleGetByCode(t *testing.T) {
 		h.HandleGetByCode(w, r)
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.JSONEq(t, `{"error": "product not found"}`, w.Body.String())
 	})
 
 	t.Run("returns 500 when the repository fails", func(t *testing.T) {
@@ -91,5 +92,6 @@ func TestHandleGetByCode(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.NotContains(t, w.Body.String(), "db error", "the raw repository error must not leak to the client")
+		assert.JSONEq(t, `{"error": "internal server error"}`, w.Body.String())
 	})
 }
