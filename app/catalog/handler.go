@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -24,20 +23,15 @@ type Response struct {
 }
 
 type Product struct {
-	Code     string   `json:"code"`
-	Price    float64  `json:"price"`
-	Category Category `json:"category"`
-}
-
-type Category struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
+	Code     string       `json:"code"`
+	Price    float64      `json:"price"`
+	Category api.Category `json:"category"`
 }
 
 type ProductDetails struct {
 	Code     string          `json:"code"`
 	Price    float64         `json:"price"`
-	Category Category        `json:"category"`
+	Category api.Category    `json:"category"`
 	Variants []VariantDetail `json:"variants"`
 }
 
@@ -57,12 +51,8 @@ func NewCatalogHandler(r models.ProductsRepository) *CatalogHandler {
 	}
 }
 
-// internalError logs the real error server-side and writes a generic 500 to
-// the client, since the real error (e.g. raw DB error text) may leak details
-// that shouldn't be exposed externally.
-func internalError(w http.ResponseWriter, err error) {
-	log.Printf("catalog: %s", err)
-	api.ErrorResponse(w, http.StatusInternalServerError, api.ErrInternalServerError.Error())
+func newCategory(c models.Category) api.Category {
+	return api.Category{Code: c.Code, Name: c.Name}
 }
 
 func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +64,7 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	res, total, err := h.repo.GetAllProducts(req)
 	if err != nil {
-		internalError(w, err)
+		api.InternalError(w, "catalog", err)
 		return
 	}
 
@@ -82,12 +72,9 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 	products := make([]Product, len(res))
 	for i, p := range res {
 		products[i] = Product{
-			Code:  p.Code,
-			Price: p.Price.InexactFloat64(),
-			Category: Category{
-				Code: p.Category.Code,
-				Name: p.Category.Name,
-			},
+			Code:     p.Code,
+			Price:    p.Price.InexactFloat64(),
+			Category: newCategory(p.Category),
 		}
 	}
 
@@ -106,7 +93,7 @@ func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err != nil {
-		internalError(w, err)
+		api.InternalError(w, "catalog", err)
 		return
 	}
 
@@ -124,12 +111,9 @@ func (h *CatalogHandler) HandleGetByCode(w http.ResponseWriter, r *http.Request)
 	}
 
 	api.OKResponse(w, ProductDetails{
-		Code:  p.Code,
-		Price: p.Price.InexactFloat64(),
-		Category: Category{
-			Code: p.Category.Code,
-			Name: p.Category.Name,
-		},
+		Code:     p.Code,
+		Price:    p.Price.InexactFloat64(),
+		Category: newCategory(p.Category),
 		Variants: variants,
 	})
 }
