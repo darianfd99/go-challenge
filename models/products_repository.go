@@ -1,5 +1,10 @@
 package models
 
+type GetAllProductsRequest struct {
+	Offset int
+	Limit  int
+}
+
 type ProductsRepository interface {
-	GetAllProducts() ([]Product, error)
+	GetAllProducts(req GetAllProductsRequest) (products []Product, total int64, err error)
 }

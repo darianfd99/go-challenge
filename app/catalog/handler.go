@@ -3,12 +3,14 @@ package catalog
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/mytheresa/go-hiring-challenge/models"
 )
 
 type Response struct {
 	Products []Product `json:"products"`
+	Total    int64     `json:"total"`
 }
 
 type Product struct {
@@ -33,7 +35,13 @@ func NewCatalogHandler(r models.ProductsRepository) *CatalogHandler {
 }
 
 func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
-	res, err := h.repo.GetAllProducts()
+	req, err := parseGetAllProductsRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	res, total, err := h.repo.GetAllProducts(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -57,10 +65,51 @@ func (h *CatalogHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 	response := Response{
 		Products: products,
+		Total:    total,
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func parseGetAllProductsRequest(r *http.Request) (models.GetAllProductsRequest, error) {
+	offset, limit, err := parsePagination(r)
+	if err != nil {
+		return models.GetAllProductsRequest{}, err
+	}
+
+	return models.GetAllProductsRequest{Offset: offset, Limit: limit}, nil
+}
+
+func parsePagination(r *http.Request) (offset int, limit int, err error) {
+	offset = 0
+	if v := r.URL.Query().Get("offset"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return 0, 0, ErrInvalidOffset
+		}
+		offset = n
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	limit = 10
+	if v := r.URL.Query().Get("limit"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return 0, 0, ErrInvalidLimit
+		}
+		limit = n
+	}
+	if limit < 1 {
+		limit = 1
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	return offset, limit, nil
 }
